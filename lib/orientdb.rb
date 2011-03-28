@@ -28,3 +28,5 @@ require 'orientdb/record'
 require 'orientdb/document'
 require 'orientdb/sql'
 require 'orientdb/oclass'
+
+import 'orientdb/tasks/database.rake' if defined?(Rake)
