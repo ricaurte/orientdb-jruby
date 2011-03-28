@@ -18,7 +18,7 @@ end
 desc "Primitive database rake task file for migrating the OrientDB databases"
 namespace :db do
   
-  task :settings do
+  task :settings => :environment do
     settings = YAML::load( File.open( File.join(APPLICATION_ROOT, 'config', 'database.yml') ) )
     
     environment_setting = case ENV['RACK_ENV']
