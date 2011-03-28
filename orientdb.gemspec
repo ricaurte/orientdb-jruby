@@ -53,6 +53,8 @@ Gem::Specification.new do |s|
     "lib/orientdb/sql/query.rb",
     "lib/orientdb/sql/update.rb",
     "lib/orientdb/storage.rb",
+    "lib/orientdb/tasks.rb",
+    "lib/orientdb/tasks/database.rake",
     "lib/orientdb/user.rb",
     "lib/orientdb/version.rb",
     "lib/tasks/database.rake",
