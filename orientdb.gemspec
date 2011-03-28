@@ -58,7 +58,7 @@ Gem::Specification.new do |s|
     "lib/orientdb/user.rb",
     "lib/orientdb/version.rb",
     "lib/tasks/database.rake",
-    "orientdb.gemspec",
+    "orientdb.gemspec"
     "spec/database_spec.rb",
     "spec/document_spec.rb",
     "spec/orientdb_spec.rb",
