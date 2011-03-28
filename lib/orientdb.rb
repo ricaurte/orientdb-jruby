@@ -1,4 +1,5 @@
 raise "Rubyhaze only runs on JRuby. Sorry!" unless (RUBY_PLATFORM =~ /java/)
+Dir["tasks/**/*.rake"].each { |ext| load ext } if defined?(Rake)
 
 $: << File.dirname(__FILE__)
 $: << File.expand_path('../../jars/', __FILE__)

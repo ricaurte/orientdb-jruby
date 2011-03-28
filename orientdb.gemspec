@@ -55,6 +55,7 @@ Gem::Specification.new do |s|
     "lib/orientdb/storage.rb",
     "lib/orientdb/user.rb",
     "lib/orientdb/version.rb",
+    "lib/tasks/database.rake",
     "orientdb.gemspec",
     "spec/database_spec.rb",
     "spec/document_spec.rb",
@@ -76,13 +77,16 @@ Gem::Specification.new do |s|
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_development_dependency(%q<awesome_print>, [">= 0"])
       s.add_development_dependency(%q<rspec>, [">= 2.4"])
+      s.add_development_dependency(%q<rake>, [">= 0.8.7"])
     else
       s.add_dependency(%q<awesome_print>, [">= 0"])
       s.add_dependency(%q<rspec>, [">= 2.4"])
+      s.add_development_dependency(%q<rake>, [">= 0.8.7"])
     end
   else
     s.add_dependency(%q<awesome_print>, [">= 0"])
     s.add_dependency(%q<rspec>, [">= 2.4"])
+    s.add_development_dependency(%q<rake>, [">= 0.8.7"])
   end
 end
 
