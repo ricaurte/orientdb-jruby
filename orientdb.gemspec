@@ -79,15 +79,18 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<awesome_print>, [">= 0"])
       s.add_development_dependency(%q<rspec>, [">= 2.4"])
       s.add_development_dependency(%q<rake>, [">= 0.8.7"])
+      s.add_development_dependency(%q<alltasks>, [">= 0.1.0"])
     else
       s.add_dependency(%q<awesome_print>, [">= 0"])
       s.add_dependency(%q<rspec>, [">= 2.4"])
-      s.add_development_dependency(%q<rake>, [">= 0.8.7"])
+      s.add_dependency(%q<rake>, [">= 0.8.7"])
+      s.add_dependency(%q<alltasks>, [">= 0.1.0"])
     end
   else
     s.add_dependency(%q<awesome_print>, [">= 0"])
     s.add_dependency(%q<rspec>, [">= 2.4"])
-    s.add_development_dependency(%q<rake>, [">= 0.8.7"])
+    s.add_dependency(%q<rake>, [">= 0.8.7"])
+    s.add_dependency(%q<alltasks>, [">= 0.1.0"])
   end
 end
 
