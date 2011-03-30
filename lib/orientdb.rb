@@ -12,6 +12,24 @@ module OrientDB
     puts "[#{name}:const_missing] #{missing}"
     super
   end
+  
+  def self::load_all_settings
+    if File.exists?(File.join(ORIENT_APP_ROOT, 'config', 'orientdb.yml'))
+      YAML::load( File.open(File.join(ORIENT_APP_ROOT, 'config', 'orientdb.yml')) )
+    end
+  end
+  
+  def self::load_database_setting(environment)
+    settings = self::load_all_settings
+    
+    if settings
+      settings[environment]
+    end
+  end
+  
+  def self::connect_to_database(environment)
+    OrientDB::DocumentDatabase.connect(environment['database'], environment['user'], environment['password'])
+  end
 
 end
 
