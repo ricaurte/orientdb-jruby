@@ -39,7 +39,7 @@ namespace :orientdb do
         # need root password to create database
         if CURRENT_ODB_SETTING.nil?
           STDOUT.puts "The database does not exist."
-          STDOUT.puts "Please enter a name for the database (_development, _production, will be added for you):"
+          STDOUT.puts "Please enter a name for the database:"
           @database_name = STDIN.gets.strip
           STDOUT.puts "Is the database remote? (y/n) Tip: Remote access allows for more connections."
           @place = (STDIN.gets.strip[0] == "y" ? "remote" : "local")
@@ -72,7 +72,7 @@ EOF
 ).result)
           end
           
-          @location = "#{@database_stub}_#{ENV['env']}"
+          @location = "#{@database_stub}_#{(ENV['env'] ? ENV['env'] : 'development')}"
           
           STDOUT.puts "Your config/orientdb.yml file that contains your database access settings has been created."
         end
