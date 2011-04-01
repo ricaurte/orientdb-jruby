@@ -72,7 +72,7 @@ EOF
 ).result)
           end
           
-          @location = "#{@database_stub}_#{ENV['RACK_ENV']}"
+          @location = "#{@database_stub}_#{ENV['env']}"
           
           STDOUT.puts "Your config/orientdb.yml file that contains your database access settings has been created."
         end
