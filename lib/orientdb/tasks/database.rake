@@ -17,129 +17,108 @@ end
 
 desc "Primitive database rake task file for migrating the OrientDB databases"
 namespace :orientdb do
-  
-  desc "load the database settings to access the database."
-  task :settings => :environment do
-    if CURRENT_ODB_SETTING
-      @location = CURRENT_ODB_SETTING['database']
-      @user = CURRENT_ODB_SETTING['user']
-      @password = CURRENT_ODB_SETTING['password']
-    else
-      # throw error!
-    end
-  end
 
   desc "create and setup the database. On creation you need to supply it the OrientDB root password, then it will create the database and assign the admin, writer, and reader users the password you put in your config/database.yml"
-  task :create => :settings do
+  task :create => :environment do
     begin
-      # ensure that database has been created
-      begin
-        database = OrientDB::DocumentDatabase.connect(@location, @user, @password)
-      rescue com.orientechnologies.orient.core.exception.ODatabaseException
-        # need root password to create database
-        if CURRENT_ODB_SETTING.nil?
-          STDOUT.puts "The database does not exist."
-          STDOUT.puts "Please enter a name for the database:"
-          @database_name = STDIN.gets.strip
-          STDOUT.puts "Is the database remote? (y/n) Tip: Remote access allows for more connections."
-          @place = (STDIN.gets.strip[0] == "y" ? "remote" : "local")
-          STDOUT.puts "What is the domain of the database? (localhost if on your computer)"
-          @domain = STDIN.gets.strip
-          STDOUT.puts "What user will the program use to access the database? (admin, writer, and reader are standard)"
-          @user = STDIN.gets.strip
-          STDOUT.puts "What would you like to set the passwords of all the users to? (you can change specific ones later)"
-          @password = STDIN.gets.strip
-          
-          config_root = File.join(ORIENT_APP_ROOT, 'config')
-          if !File.directory?(config_root)
-            Dir.mkdir(config_root)
-          end
-          
-          @database_stub = "#{@place}:#{@domain}/#{@database_name}"
-          File.open(File.join(config_root, 'orientdb.yml'), "w+") do |file|
-            file.write(ERB.new(<<-EOF
-production:
-  user: "<%= @user %>"
-  password: "<%= @password %>"
-  database: "<%= @database_stub %>_production"
-  
-development:
-  user: "<%= @user %>"
-  password: "<%= @password %>"
-  database: "<%= @database_stub %>_development"
+      OrientDB::connect_to_database.close
+    rescue com.orientechnologies.orient.core.exception.ODatabaseException
+      # need root password to create database
+      if OrientDB::load_database_setting.nil?
+        STDOUT.puts "The database does not exist."
+        STDOUT.puts "Please enter a name for the database:"
+        @database_name = STDIN.gets.strip
+        STDOUT.puts "Is the database remote? (y/n) Tip: Remote access allows for more connections."
+        @place = (STDIN.gets.strip[0] == "y" ? "remote" : "local")
+        STDOUT.puts "What is the domain of the database? (localhost if on your computer)"
+        @domain = STDIN.gets.strip
+        STDOUT.puts "What user will the program use to access the database? (admin, writer, and reader are standard)"
+        @user = STDIN.gets.strip
+        STDOUT.puts "What would you like to set the passwords of all the users to? (you can change specific ones later)"
+        @password = STDIN.gets.strip
+        
+        config_root = File.join(ORIENT_APP_ROOT, 'config')
+        if !File.directory?(config_root)
+          Dir.mkdir(config_root)
+        end
+        
+        File.open(File.join(config_root, "orientdb_#{OrientDB::environment}.yml"), "w+") do |file|
+          file.write(ERB.new(<<-EOF
+user: "<%= @user %>"
+password: "<%= @password %>"
+place: "<%= @place %>"
+domain: "<%= @domain %>"
+database: "<%= @database_name %>_<%= OrientDB::environment %>"
 
 EOF
 ).result)
-          end
-          
-          @location = "#{@database_stub}_#{(ENV['env'] ? ENV['env'] : 'development')}"
-          
-          STDOUT.puts "Your config/orientdb.yml file that contains your database access settings has been created."
         end
-        STDOUT.puts "Please enter the OrientDB server's root password to create the database. It is located in [OrientDB_ROOT]/config/orientdb-server-config.xml"
-        root_password = STDIN.gets.strip
         
-
-        # create database
-        com.orientechnologies.orient.client.remote.OServerAdmin.new(@location).connect('root', root_password).createDatabase('local').close()
-        STDOUT.puts "Your database has been created"
+        OrientDB::load_database_setting(true)
         
-        # update admin's password to the one listed in the config file
-        database = OrientDB::DocumentDatabase.connect(@location, 'admin', 'admin')
+        STDOUT.puts "Your config/orientdb_#{OrientDB::environment}.yml file that contains your database access settings has been created."
+      end
+      STDOUT.puts "Please enter the OrientDB server's root password to create the database. It is located in [OrientDB_ROOT]/config/orientdb-server-config.xml"
+      root_password = STDIN.gets.strip
+      
+      # create database
+      com.orientechnologies.orient.client.remote.OServerAdmin.new(OrientDB::database_location(OrientDB::load_database_setting)).connect('root', root_password).createDatabase('local').close()
+      STDOUT.puts "Your database has been created"
+      
+      # update admin's password to the one listed in the config file
+      OrientDB::transaction(:password => 'admin') do |database|
         database.all_in_class("OUser").each do |user|
-          user.password = @password
+          user.password = OrientDB::load_database_setting['password']
           user.save
         end
-        STDOUT.puts "Your user passwords for admin, writer, and reader have been updated"
-        #OrientDB::DocumentDatabase.create("remote:localhost/sponus_production")
       end
+      STDOUT.puts "Your user passwords for admin, writer, and reader have been updated"
+      #OrientDB::DocumentDatabase.create("remote:localhost/sponus_production")
       
       # ensure that SchemaMigration class has been created
-      if !database.get_class("SchemaMigration")
-        database.create_class("SchemaMigration", "migration" => :string)
+      OrientDB::transaction do |database|
+        if !database.get_class("SchemaMigration")
+          database.create_class("SchemaMigration", "migration" => :string)
+          STDOUT.puts "Your SchemaMigration table has been created."
+        end
       end
-      STDOUT.puts "Your SchemaMigration table has been created."
       
     rescue com.orientechnologies.orient.core.exception.ODatabaseException
     end
     
-    if database
-      database.close
-    end
-    # ensure folder databases exists and databases/migrations exists
-    if !File.directory?(DATABASES_ROOT)
-      Dir.mkdir(DATABASES_ROOT)
-      STDOUT.puts "Your orientd folder has been created"
-    end
-    
     if !File.directory?(MIGRATION_ROOT)
+      # ensure folder databases exists and databases/migrations exists
+      if !File.directory?(DATABASES_ROOT)
+        Dir.mkdir(DATABASES_ROOT)
+        STDOUT.puts "Your orientdb folder has been created"
+      end
+      
       Dir.mkdir(MIGRATION_ROOT)
       STDOUT.puts "Your orientd/migrations folder has been created"
     end
   end
   
   desc "migrates any database migrations that have not been migrated yet. Currently not functional."
-  task :migrate => :settings do
+  task :migrate => :environment do
     # load all files in database/migrations
     
     # load schema_migrations table
-    begin
-      database = OrientDB::DocumentDatabase.connect(@location, @user, @password)
-      
-      migrated = database.all_in_class("SchemaMigration").inject({}) {|hash, migration| hash[migration.migration] = migration; hash}
-      
-      to_migrate = Dir.glob("#{MIGRATION_ROOT}/*.rb").inject([]) do |list, file| 
-        migration = file.split('/').last.split('.')[0]
-        if !migrated.has_key?(migration)
-          list << migration
-          require file
-        end
-        list
+    migrated = OrientDB::query do |database|
+      database.all_in_class("SchemaMigration").inject({}) {|hash, migration| hash[migration.migration] = migration; hash}
+    end
+    
+    to_migrate = Dir.glob("#{MIGRATION_ROOT}/*.rb").inject([]) do |list, file| 
+      migration = file.split('/').last.split('.')[0]
+      if !migrated.has_key?(migration)
+        list << migration
+        require file
       end
-      
-      to_migrate.sort!
-      
-      to_migrate.each do |migration|
+      list
+    end
+    
+    to_migrate.sort!
+    to_migrate.each do |migration|
+      OrientDB::transaction do |database|
         parts = migration.partition("_")
         klass_name = "#{parts[2]}_#{parts[0]}"
         
@@ -148,23 +127,13 @@ EOF
         
         STDOUT.puts "#{migration} has been migrated"
       end
-    rescue com.orientechnologies.orient.core.exception.ODatabaseException
-
-    end
-    
-    if database
-      database.close
     end
   end
   
   desc "rolls back one database migration.  Should be expanded to include the number of steps. Currently not functional."
-  task :rollback => :settings do
-    begin
-      database = OrientDB::DocumentDatabase.connect(@location, @user, @password)
-    rescue com.orientechnologies.orient.core.exception.ODatabaseException
-      if database
-        database.close
-      end
+  task :rollback => :environment do
+    OrientDB::transaction do |database|
+      
     end
   end
   

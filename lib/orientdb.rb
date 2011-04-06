@@ -5,31 +5,105 @@ $: << File.expand_path('../../jars/', __FILE__)
 
 require 'java'
 require "orientdb-client-0.9.25"
+require 'ruby-debug'
 
 module OrientDB
+  def environment
+    @environment || 'development'
+  end
+  module_function :environment
+  
+  def environment=(env)
+    @environment = env
+  end
+  module_function :environment=
 
   def self.const_missing(missing)
     puts "[#{name}:const_missing] #{missing}"
     super
   end
   
-  def self::load_all_settings
-    if File.exists?(File.join(ORIENT_APP_ROOT, 'config', 'orientdb.yml'))
-      YAML::load( File.open(File.join(ORIENT_APP_ROOT, 'config', 'orientdb.yml')) )
+  def load_database_setting(reload=false)
+    if @database and !reload
+      @database
+    else
+      @database_setting = if File.exists?(File.join(ORIENT_APP_ROOT, 'config', "orientdb_#{self::environment}.yml"))
+        YAML::load( File.open(File.join(ORIENT_APP_ROOT, 'config', "orientdb_#{self::environment}.yml")) )
+      end
     end
   end
+  module_function :load_database_setting
   
-  def self::load_database_setting(environment)
-    settings = self::load_all_settings
+  def database_location(setting)
+    if setting
+      "#{setting['place']}:#{setting['domain']}/#{setting['database']}"
+    end
+  end
+  module_function :database_location
+  
+  def connect_to_database(overrides={})
+    setting = (self::load_database_setting ? self::load_database_setting : {})
     
-    if settings
-      settings[environment]
+    overrides.keys.each do |key|
+      setting[key.to_s] = overrides[key]
+    end
+    
+    #puts "setting #{setting}"
+    
+    OrientDB::DocumentDatabase.connect(self::database_location(setting), setting['user'], setting['password'])
+  end
+  module_function :connect_to_database
+
+  #
+  # Can't enable transactions yet, because there are problems with .commit using up the heap
+  #
+  def transaction(overrides={}, &body)
+    has_error = nil
+    database = self::connect_to_database(overrides)
+    
+    #puts "begin transaction"
+    #database.begin
+    begin
+      response = yield database
+      #debugger
+      #puts "commit transaction"
+      #database.commit
+    rescue
+      has_error = true
+      #puts "rollback transaction"
+      #database.rollback
+    end
+    
+    #puts "close connection"
+    database.close
+    
+    if has_error
+      raise
+    else
+      response
     end
   end
+  module_function :transaction
   
-  def self::connect_to_database(environment)
-    OrientDB::DocumentDatabase.connect(environment['database'], environment['user'], environment['password'])
+  def query(overrides={}, &body)
+    has_error = nil
+    database = self::connect_to_database(overrides)
+    
+    begin
+      response = yield database
+    rescue
+      has_error = true
+    end
+    
+    database.close
+    
+    if has_error
+      raise
+    else
+      response
+    end
   end
+  module_function :query
 
 end
 
