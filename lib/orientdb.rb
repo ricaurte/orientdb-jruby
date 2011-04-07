@@ -58,7 +58,7 @@ module OrientDB
   # Can't enable transactions yet, because there are problems with .commit using up the heap
   #
   def transaction(overrides={}, &body)
-    has_error = nil
+    exception = nil
     database = self::connect_to_database(overrides)
     
     #puts "begin transaction"
@@ -68,17 +68,17 @@ module OrientDB
       #debugger
       #puts "commit transaction"
       #database.commit
-    rescue
-      has_error = true
+    rescue Exception => e
+      exception = e
       #puts "rollback transaction"
       #database.rollback
+    ensure
+      #puts "close connection"
+      database.close unless database.nil?
     end
     
-    #puts "close connection"
-    database.close
-    
-    if has_error
-      raise
+    if exception
+      raise exception
     else
       response
     end
@@ -86,19 +86,19 @@ module OrientDB
   module_function :transaction
   
   def query(overrides={}, &body)
-    has_error = nil
+    exception = nil
     database = self::connect_to_database(overrides)
     
     begin
       response = yield database
-    rescue
-      has_error = true
+    rescue Exception => e
+      exception = e
+    ensure
+      database.close unless database.nil?
     end
     
-    database.close
-    
-    if has_error
-      raise
+    if exception
+      raise exception
     else
       response
     end
